@@ -1,0 +1,615 @@
+#!/usr/bin/env python3
+# vim: ft=python et ts=4 sw=4 cc=80
+
+"""
+This is a wrapper script around maven to allow for simple customization of the
+Eclipse plug-in build process.
+
+The main goal of this script is to provide a means to exclude certain modules
+from building, in order to quickly test if a given module can be built
+successfully.
+"""
+
+from itertools import chain
+from enum import Enum
+import argparse
+import configparser
+import logging
+import os.path as op
+from os import environ as env
+import re
+import string
+import sys
+import subprocess
+import xml.etree.ElementTree as etree
+
+
+# INTERNAL CONSTANTS
+SCRIPT_PATH = op.abspath(op.dirname(__file__))
+POM_NAMESPACES = {'pom': 'http://maven.apache.org/POM/4.0.0'}
+POM_FILENAME = 'pom.xml'
+LOGGER = None
+
+
+class UnresolvedDependencyError(Exception):
+    """
+    An error type that is raise when an unresolved dependency is encountered
+    """
+
+    def __init__(self, module, dependency):
+        Exception.__init__(self)
+        self.message = (
+            'Cannot resolve depdency of \'%s\' (%s) on \'%s\' (%s)' % (
+                module.name,
+                module.artifact_id,
+                name_from_id(dependency),
+                dependency,
+            )
+        )
+
+    def __str__(self):
+        return self.message
+
+
+# pylint: disable=too-many-instance-attributes
+class Module:
+    """A type to represent a project module"""
+
+    Kind = Enum('Kind', 'plugin fragment feature update target unknown')
+
+    # pylint: disable=too-many-arguments
+    def __init__(self, artifact_id, name, modules, path, pom, packaging):
+        self._artifact_id = artifact_id
+        self._name = name
+        self._modules = modules
+        self._path = path
+        self._pom = pom
+        self._packaging = packaging
+        self._dependencies = []
+
+        if op.exists(op.join(self.path, 'plugin.xml')):
+            self._kind = Module.Kind.plugin
+        elif op.exists(op.join(self.path, 'fragment.xml')):
+            self._kind = Module.Kind.fragment
+        elif op.exists(op.join(self.path, 'feature.xml')):
+            self._kind = Module.Kind.feature
+        elif op.exists(op.join(self.path, 'category.xml')):
+            self._kind = Module.Kind.update
+        elif self._packaging == "eclipse-target-definition":
+            self._kind = Module.Kind.target
+        else:
+            if op.exists(op.join(self.path, 'META-INF/MANIFEST.MF')):
+                self._kind = self._kind_from_manifest()
+            else:
+                self._kind = Module.Kind.unknown
+
+    @property
+    def artifact_id(self):
+        """Get the ID of the artifact contained in this module"""
+        return self._artifact_id
+
+    @property
+    def name(self):
+        """Get the friendly name of this module"""
+        return self._name
+
+    @property
+    def modules(self):
+        """Get the list of modules originating in this module"""
+        return self._modules
+
+    @property
+    def path(self):
+        """Get the path to the module"""
+        return self._path
+
+    @property
+    def pom(self):
+        """Get the path to the pom.xml defining this module"""
+        return self._pom
+
+    @property
+    def kind(self):
+        """Get the type of the module"""
+        return self._kind
+
+    @property
+    def dependencies(self):
+        """Get the dependencies of this module"""
+        depset = set()
+        for dep in self._dependencies:
+            depset.add(dep)
+            depset = depset.union(dep.dependencies)
+        return depset
+
+    def find_by_id(self, artifact_id):
+        """Find a child module with the given artifact ID"""
+        for mod in self:
+            if mod.artifact_id == artifact_id:
+                return mod
+        return None
+
+    def find_by_name(self, name):
+        """Find all child modules with the given name"""
+        return [m for m in self if m.name == name]
+
+    def find(self, needle):
+        """Find all children matching the given needle"""
+        result = set()
+        for mod in self:
+            if mod.artifact_id == needle or needle.lower() in mod.name.lower():
+                result.add(mod)
+        return list(result)
+
+    def add_dependency(self, module):
+        """Add the given module as a dependency of this modules"""
+        LOGGER.debug('Adding dependency on %s to %s', module.name, self.name)
+        self._dependencies.append(module)
+
+    def _kind_from_manifest(self):
+        with open(op.join(self.path, 'META-INF', 'MANIFEST.MF')) as manifest:
+            if 'Fragment-Host:' in manifest.read():
+                return Module.Kind.fragment
+            return Module.Kind.plugin
+
+    def __iter__(self):
+        yield self
+        for submodule in chain(*map(iter, self.modules)):
+            yield submodule
+
+    def __str__(self):
+        parts = ['%s (%s)' % (self.name, self.artifact_id)]
+        for mod in self.modules:
+            modlines = str.splitlines(str(mod))
+            parts.append(' ' * 3 + '\u2514\u2500\u2500\u2192 ' + modlines[0])
+            for line in modlines[1:]:
+                parts.append(' ' * 3 + line)
+        return '\n'.join(parts)
+
+    def __repr__(self):
+        return f"{self._kind} ({self._packaging}): {self.artifact_id}"
+
+    def __eq__(self, other: "Module") -> bool:
+        return self.artifact_id == other.artifact_id
+
+    def __eq__(self, artifact_id: string) -> bool:
+        return self.artifact_id == artifact_id
+
+    def __hash__(self):
+        return hash(self.artifact_id)
+
+
+def name_from_id(artifact_id):
+    """Convert an artifact ID into a friendly name."""
+
+    if not artifact_id.startswith(PROJECT_PREFIX):
+        return artifact_id
+
+    stripped = artifact_id[len(PROJECT_PREFIX) + 1:]
+    spaced = stripped.replace('.', ' ')
+    return string.capwords(spaced)
+
+
+def scan_module(root, name):
+    """Scan the given module and collect all submodules.
+
+    Keyword arguments:
+    root -- the root of the module
+    name -- the name of the module to scan for submodules.
+    """
+
+    path = op.join(root, name)
+    pom_path = op.join(path, POM_FILENAME)
+    if not op.exists(pom_path):
+        return Module(name, name_from_id(name), [], path, None, None)
+
+    pom = etree.parse(pom_path).getroot()
+    packaging = pom.findtext('pom:packaging', namespaces=POM_NAMESPACES)
+    artifact_id = pom.findtext('pom:artifactId', namespaces=POM_NAMESPACES)
+    name = name_from_id(artifact_id)
+    scanned = Module(artifact_id, name, [], path, pom_path, packaging)
+
+    for mod in pom.iterfind('.//pom:module', namespaces=POM_NAMESPACES):
+        if mod.text not in scanned.modules:
+            scanned.modules.append(scan_module(path, mod.text))
+
+    return scanned
+
+
+def scan_project():
+    """Discover all project modules."""
+
+    pom_path = op.join(PROJECT_ROOT, POM_FILENAME)
+    if not op.exists(pom_path):
+        return None
+
+    pom = etree.parse(pom_path)
+    packaging = pom.findtext('pom:packaging', namespaces=POM_NAMESPACES)
+    artifact_id = pom.findtext('pom:artifactId', namespaces=POM_NAMESPACES)
+    module = Module(artifact_id, PROJECT_NAME, [], PROJECT_ROOT, pom_path,
+                    packaging)
+
+    for mod in pom.iterfind('.//pom:module', namespaces=POM_NAMESPACES):
+        if mod.text not in module.modules:
+            module.modules.append(scan_module(PROJECT_ROOT, mod.text))
+
+    return module
+
+
+def resolve_plugin_dependencies(module, tree):
+    """Resolve the dependencies of a plugin module within the given tree."""
+    LOGGER.debug('Resolving dependencies for %s in %s', module.name, tree.name)
+
+    manifest_path = op.join(module.path, 'META-INF', 'MANIFEST.MF')
+    with open(manifest_path) as manifest:
+        in_require_bundle = False
+        for line in (l.rstrip() for l in manifest):
+            if line.startswith('Require-Bundle:'):
+                in_require_bundle = True
+                line = line[len('Require-Bundle:'):]
+            if in_require_bundle and line.startswith(' '):
+                line = line.lstrip()
+                if line.startswith(PROJECT_PREFIX):
+                    dependency = re.split(';|,', line)[0]
+                    dependency_module = tree.find_by_id(dependency)
+                    if dependency_module:
+                        module.add_dependency(dependency_module)
+                    else:
+                        raise UnresolvedDependencyError(module, dependency)
+            else:
+                in_require_bundle = False
+
+
+def resolve_fragment_dependencies(module, tree):
+    """Resolve the dependencies of a fragment module within the given tree."""
+    LOGGER.debug('Resolving dependencies for %s in %s', module.name, tree.name)
+
+    manifest_path = op.join(module.path, 'META-INF', 'MANIFEST.MF')
+    with open(manifest_path) as manifest:
+        for line in (l.rstrip() for l in manifest):
+            if line.startswith('Fragment-Host: '):
+                line = line[len('Fragment-Host: '):]
+                dependency = re.split(';|,', line)[0]
+                if line.startswith(PROJECT_PREFIX):
+                    dependency = re.split(';|,', line)[0]
+                    dependency_module = tree.find_by_id(dependency)
+                    if dependency_module:
+                        module.add_dependency(dependency_module)
+                    else:
+                        raise UnresolvedDependencyError(module, dependency)
+
+
+def resolve_feature_dependencies(module, tree):
+    """Resolve the dependencies of a feature module within the given tree."""
+    LOGGER.debug('Resolving dependencies for %s in %s', module.name, tree.name)
+
+    feature_path = op.join(module.path, 'feature.xml')
+    feature = etree.parse(feature_path).getroot()
+    requires = feature.find('requires')
+    if requires:
+        for child in list(requires):
+            if 'plugin' in child.attrib:
+                plugin = child.attrib['plugin']
+                if plugin.startswith(PROJECT_PREFIX):
+                    plugin_module = tree.find_by_id(plugin)
+                    if plugin_module:
+                        module.add_dependency(plugin_module)
+                    else:
+                        raise UnresolvedDependencyError(module, plugin)
+
+    for plugin in feature.iter('plugin'):
+        plugin_id = plugin.attrib['id']
+        if plugin_id.startswith(PROJECT_PREFIX):
+            plugin_module = tree.find_by_id(plugin_id)
+            if plugin_module:
+                module.add_dependency(plugin_module)
+            else:
+                raise UnresolvedDependencyError(module, plugin_id)
+
+
+def resolve_update_dependencies(module, tree):
+    """Resolve the dependencies of a update module within the given tree."""
+    LOGGER.debug('Resolving dependencies for %s in %s', module.name, tree.name)
+
+    category_path = op.join(module.path, 'category.xml')
+    category = etree.parse(category_path).getroot()
+
+    for feature in category.iter('feature'):
+        plugin_id = feature.attrib['id']
+        if plugin_id.endswith('.source'):
+            stripped_id = plugin_id[:-len('.source')]
+            if tree.find_by_id(stripped_id):
+                plugin_id = stripped_id
+        if plugin_id.startswith(PROJECT_PREFIX):
+            plugin_module = tree.find_by_id(plugin_id)
+            if plugin_module:
+                module.add_dependency(plugin_module)
+            else:
+                raise UnresolvedDependencyError(module, plugin_module)
+
+
+def resolve_dependencies(tree):
+    """Resolve cross module dependencies in the tree"""
+
+    for module in tree:
+        if module.kind == Module.Kind.plugin:
+            resolve_plugin_dependencies(module, tree)
+        elif module.kind == Module.Kind.fragment:
+            resolve_plugin_dependencies(module, tree)
+            resolve_fragment_dependencies(module, tree)
+        elif module.kind == Module.Kind.feature:
+            resolve_feature_dependencies(module, tree)
+        elif module.kind == Module.Kind.update:
+            resolve_update_dependencies(module, tree)
+
+
+def parse_arguments():
+    """Parse user supplies arguments"""
+    parser = argparse.ArgumentParser(
+        prog='build',
+        description='Maven build abstraction for Cevelop',
+        formatter_class=argparse.MetavarTypeHelpFormatter,
+    )
+    parser.add_argument(
+        'goals',
+        metavar='goal',
+        nargs='*',
+        default=['clean', 'verify'],
+        type=str,
+        help='The lifecycle phases to execute'
+    )
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument(
+        '-f',
+        '--features',
+        nargs='+',
+        required=False,
+        help='Only build the specified features',
+        type=str
+    )
+    group.add_argument(
+        '-b',
+        '--bundles',
+        nargs='+',
+        required=False,
+        help='Only build the specified bundles',
+        type=str
+    )
+    group.add_argument(
+        '-t',
+        '--tests',
+        nargs='+',
+        required=False,
+        help='Only build the specified tests',
+        type=str
+    )
+    parser.add_argument(
+        '-p',
+        '--print-command',
+        default=False,
+        action='store_true',
+        help='Show the maven commandline'
+    )
+    parser.add_argument(
+        '-s',
+        '--sign',
+        default=False,
+        action='store_true',
+        help='Sign the built jars using jarsigner'
+    )
+    parser.add_argument(
+        '-C',
+        '--generate-ci',
+        default=False,
+        action='store_true',
+        help='Generate a parallelized Gilab CI configuration'
+    )
+    parser.add_argument(
+        '-F',
+        '--fail-fast',
+        default=False,
+        action='store_true',
+        help='Abort the build on the fist failure'
+    )
+    parser.add_argument(
+        '-O',
+        '--offline',
+        default=False,
+        action='store_true',
+        help='Run maven in offline mode'
+    )
+    parser.add_argument(
+        '-T',
+        '--threads',
+        dest='threads',
+        type=str,
+        help='Run maven with N threads per core'
+    )
+    parser.add_argument(
+        '-V',
+        '--verbose',
+        dest='verbose',
+        action='store_true',
+        help='Run maven with -e -X'
+    )
+    return parser.parse_args()
+
+
+def select(patterns, kind, tree, mappings):
+    """Select the given patterns of the given kind from the given tree"""
+    mapping_id = PROJECT_PREFIX + '.' + mappings[kind]
+    subtree = tree.find_by_id(mapping_id)
+    if 'all' in patterns:
+        return {m for m in subtree if m.artifact_id != mapping_id}
+    return {module for pattern in patterns for module in subtree.find(pattern)}
+
+
+def select_modules(args, mappings, tree):
+    """Select the desired modules according to args."""
+    if args.bundles:
+        result = select(args.bundles, 'bundles', tree, mappings)
+    elif args.tests:
+        result = select(args.tests, 'tests', tree, mappings)
+    elif args.features:
+        result = select(args.features, 'features', tree, mappings)
+    else:
+        prefix = PROJECT_PREFIX
+        result = {m for m in tree
+                if m.artifact_id != \
+                        f"{prefix}.{mappings.get('root','root')}"
+                and m.artifact_id != \
+                        f"{prefix}.{mappings.get('tests','tests')}"
+                and m.artifact_id != \
+                        f"{prefix}.{mappings.get('bundles','bundles')}"
+                and m.artifact_id != \
+                        f"{prefix}.{mappings.get('features','features')}"
+                and m.artifact_id != \
+                        f"{prefix}.{mappings.get('releng','releng')}"
+                and m.artifact_id != \
+                        f"{prefix}.{mappings.get('helps','helps')}"
+                and m.artifact_id != \
+                        f"{prefix}.{mappings.get('examples','examples')}"}
+    return result
+
+def get_excluded_modules(tree, selected_modules):
+    """Get all modules that are excluded from the build"""
+    transitively_selected = selected_modules.copy()
+    for dep in (dep for mod in selected_modules for dep in mod.dependencies):
+        transitively_selected.add(dep)
+    excludes = {m for m in tree if m not in transitively_selected and
+                m.kind != Module.Kind.target}
+    for default_exclude in PROJECT_EXCLUDES:
+        mod = tree.find_by_id(PROJECT_PREFIX + '.' + default_exclude)
+        excludes.add(mod)
+    return excludes
+
+
+def skip_string(excluded_modules):
+    """Get the string used to skip the specified maven modules"""
+    skips = ''
+    for mod in excluded_modules:
+        skips += '!%s:%s,' % (PROJECT_PREFIX, mod.artifact_id)
+    return skips.strip(',')
+
+
+def get_enabled_git_flow_branch():
+    """Determine wich 'git-flow' branch should be considered active"""
+    command = ' '.join(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
+    if env.get('CI_COMMIT_REF_NAME'):
+        branch = env.get('CI_COMMIT_REF_NAME')
+    else:
+        branch = subprocess.check_output(command, shell=True,
+                                         universal_newlines=True)
+    if branch == 'master' or branch.startswith('release/'):
+        return 'master'
+    else:
+        return 'develop'
+
+
+def get_disabled_git_flow_branch():
+    """Determine wich 'git-flow' branch should be considered inactive"""
+    return ('master' if get_enabled_git_flow_branch() == 'develop'
+            else 'develop')
+
+
+def get_base_command(args, excluded_modules):
+    """Get the base command for the build"""
+    return [
+        'mvn',
+        '-B',
+        '-o' if args.offline else '',
+        '-f %s' % op.join(PROJECT_ROOT, POM_FILENAME),
+        '-pl \'%s\'' % skip_string(excluded_modules),
+        '-Djarsigner.skip=%s' % ('false' if args.sign else 'true'),
+        '-Dgitflow.branch=%s' % get_enabled_git_flow_branch(),
+        '-fae' if not args.fail_fast else '',
+        '' if not args.threads else '-T %s' % args.threads,
+        '' if not args.verbose else '-e -X',
+    ]
+
+
+def build_main(args, mappings, build):
+    """Main build function"""
+
+    LOGGER.info('Scanning project tree rooted in %s', PROJECT_ROOT)
+    tree = scan_project()
+
+    if not tree:
+        LOGGER.critical('No project found found in %s', PROJECT_ROOT)
+        sys.exit(1)
+
+    LOGGER.info('Found the following project tree:')
+    for line in str.splitlines(str(tree)):
+        LOGGER.info(line)
+
+    LOGGER.info('Resolving project dependencies for %s', tree.name)
+    try:
+        resolve_dependencies(tree)
+    except UnresolvedDependencyError:
+        LOGGER.exception('Failed to resolve dependencies!')
+        sys.exit(1)
+
+    LOGGER.info('Resolved project dependencies for %s', tree.name)
+
+    git_flow_branch = get_enabled_git_flow_branch()
+    LOGGER.info('Detected git-flow branch [%s]', git_flow_branch)
+    target_module_name = build['target'] + " " + git_flow_branch.capitalize()
+
+    selected_modules = select_modules(args, mappings, tree)
+    target_module = tree.find_by_name(target_module_name)[0]
+    selected_modules.add(target_module)
+    LOGGER.info('Selected the following modules for build:')
+    for mod in selected_modules:
+        LOGGER.info('   \u2514\u2500\u2500\u2192 %s', mod.name)
+        for dep in mod.dependencies:
+            LOGGER.info('      \u2514\u2500\u2500\u2192 %s', dep.name)
+
+    excluded_modules = get_excluded_modules(tree, selected_modules)
+    for value in (value for key, value in mappings.items() if value):
+        to_remove = tree.find_by_id(f"{PROJECT_PREFIX}.{value}")
+        if to_remove:
+            excluded_modules.remove(to_remove)
+
+    if not excluded_modules:
+        LOGGER.info('No modules were excluded from the build')
+    else:
+        LOGGER.info('Excluding the following modules from the build:')
+        for mod in excluded_modules:
+            LOGGER.info('   \u2514\u2500\u2500\u2192 %s', mod.name)
+
+    base_command = get_base_command(args, excluded_modules)
+    base_command.extend(args.goals)
+    command = ' '.join(base_command)
+    if args.print_command:
+        LOGGER.info('Executing the following build command: %s', command)
+    return subprocess.call(command, shell=True)
+
+
+if __name__ == '__main__':
+    CONFIG_PATH = op.abspath(op.dirname(__file__))
+    CONFIG_PARSER = configparser.ConfigParser()
+    CONFIG_PARSER.read(op.join(CONFIG_PATH, '..', 'build.ini'))
+
+    PROJECT_NAME = CONFIG_PARSER['project']['name']
+    PROJECT_PREFIX = CONFIG_PARSER['project']['prefix']
+    if CONFIG_PARSER.has_option('project', 'exclude'):
+        PROJECT_EXCLUDES = [
+            e.strip() for e in CONFIG_PARSER['project']['exclude'].split(',')
+        ]
+    else:
+        PROJECT_EXCLUDES = []
+    PROJECT_ROOT = op.join(SCRIPT_PATH, '..', PROJECT_NAME + 'Project')
+
+    if CONFIG_PARSER.has_section('logging'):
+        logging.basicConfig(**CONFIG_PARSER['logging'])
+    LOGGER = logging.getLogger('build')
+
+    try:
+        sys.exit(build_main(
+            parse_arguments(),
+            CONFIG_PARSER['mappings'],
+            CONFIG_PARSER['build']
+        ))
+    except Exception:  # pylint: disable=broad-except
+        LOGGER.exception('Unexpected error!')
+        sys.exit(1)

@@ -1,0 +1,24 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Mylyn Gitlab Connector Core
+Bundle-SymbolicName: ch.stautob.eclipse.mylyn.gitlab.core;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.mylyn.commons.net,
+ org.eclipse.mylyn.tasks.core,
+ org.eclipse.collections,
+ org.slf4j.log4j,
+ com.fasterxml.jackson.core.jackson-core;bundle-version="2.9.2",
+ com.fasterxml.jackson.core.jackson-databind;bundle-version="2.9.2",
+ org.gitlab.api
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ActivationPolicy: lazy
+Export-Package: ch.stautob.eclipse.mylyn.gitlab.core,
+ ch.stautob.eclipse.mylyn.gitlab.core.attributes,
+ ch.stautob.eclipse.mylyn.gitlab.core.connection,
+ ch.stautob.eclipse.mylyn.gitlab.core.exceptions,
+ ch.stautob.eclipse.mylyn.gitlab.core.utils
+Bundle-Vendor: Stautob
+Bundle-ClassPath: .
+Bundle-Activator: ch.stautob.eclipse.mylyn.gitlab.core.Activator
+Automatic-Module-Name: ch.stautob.eclipse.mylyn.gitlab.core

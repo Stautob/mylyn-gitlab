@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/ch.stautob.eclipse.mylyn.gitlab.feature_1.0.0.qualifier.jar" id="ch.stautob.eclipse.mylyn.gitlab.feature" version="1.0.0.qualifier">
+      <category name="ch.stautob.eclipse.mylyn.gitlab"/>
+   </feature>
+   <category-def name="ch.stautob.eclipse.mylyn.gitlab" label="Mylyn Gitlab Connector">
+      <description>
+         A Mylyn Connector for Gitlab
+      </description>
+   </category-def>
+</site>

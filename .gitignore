@@ -1,0 +1,7 @@
+**/target/
+**/bin/
+
+**/screenshots/
+
+.DS_STORE
+.DS_Store

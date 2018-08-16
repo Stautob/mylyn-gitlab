@@ -1,0 +1,29 @@
+target "Gitlab Mylyn Develop" with source requirements
+
+location "http://download.eclipse.org/releases/photon" {
+	org.eclipse.equinox.common lazy
+	org.eclipse.platform.sdk lazy
+	org.eclipse.sdk.ide lazy
+	org.eclipse.mylyn_feature.feature.group lazy
+}
+
+location "http://download.eclipse.org/collections/9.2.0/repository/" {
+	org.eclipse.collections.feature.feature.group
+}
+
+location "http://download.eclipse.org/tools/orbit/downloads/drops/R20180606145124/repository" {
+	com.fasterxml.jackson.core.jackson-databind lazy
+	com.fasterxml.jackson.core.jackson-core lazy
+	org.apache.commons.io lazy
+	org.slf4j.log4j [1.7.2,2.0.0)
+	org.slf4j.log4j.source lazy
+	org.slf4j.apis.log4j lazy
+	org.slf4j.apis.log4j.source lazy
+	org.slf4j.api lazy
+}
+//
+//location "http://www.genuitec.com/updates/webclipse/ci/" {
+//	com.genuitec.eclipse.theming.icon.designer lazy
+//	com.genuitec.eclipse.theming.feature.feature.group lazy
+//	com.genuitec.eclipse.common.core.base.feature.feature.group lazy
+//}
