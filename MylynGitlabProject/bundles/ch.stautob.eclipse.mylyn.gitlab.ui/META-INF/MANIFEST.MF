@@ -1,0 +1,21 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Mylyn Gitlab Connector UI
+Bundle-SymbolicName: ch.stautob.eclipse.mylyn.gitlab.ui;singleton:=true
+Bundle-Version: 1.0.0
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.ui,
+ org.eclipse.ui.forms,
+ org.eclipse.mylyn.commons.net;bundle-version="[3.8.0,4.0.0)",
+ org.eclipse.mylyn.commons.core;bundle-version="[3.8.0,4.0.0)",
+ org.eclipse.mylyn.tasks.ui;bundle-version="[3.8.0,4.0.0)",
+ org.eclipse.mylyn.tasks.core;bundle-version="[3.8.0,4.0.0)",
+ org.eclipse.mylyn.commons.workbench;bundle-version="[3.8.0,4.0.0)",
+ org.eclipse.mylyn.commons.ui;bundle-version="[3.8.0,4.0.0)",
+ ch.stautob.eclipse.mylyn.gitlab.core,
+ org.eclipse.collections
+Bundle-Vendor: Stautob
+Bundle-ActivationPolicy: lazy
+Bundle-Activator: ch.stautob.eclipse.mylyn.gitlab.ui.GitlabUIPlugin
+Automatic-Module-Name: ch.stautob.eclipse.mylyn.gitlab.ui

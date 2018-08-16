@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         id="ch.stautob.eclipse.mylyn.gitlab.ui"
+         name="%repository.name"
+         point="org.eclipse.mylyn.tasks.ui.repositories">
+      <connectorUi
+      		brandingIcon="icons/gitlab-icon.gif"
+            class="ch.stautob.eclipse.mylyn.gitlab.ui.GitlabConnectorUI"
+            id="ch.stautob.eclipse.mylyn.gitlab.ui"
+            name="Gitlab Connector Ui"
+            overlayIcon="icons/gitlab-overlay.gif"/>
+   </extension>
+   <extension point="org.eclipse.mylyn.tasks.ui.editors">
+         <pageFactory
+            class="ch.stautob.eclipse.mylyn.gitlab.ui.GitlabEditorPageFactory"
+            id="ch.stautob.eclipse.mylyn.gitlab.ui.pageFactory">
+      </pageFactory>
+   </extension>
+</plugin>
