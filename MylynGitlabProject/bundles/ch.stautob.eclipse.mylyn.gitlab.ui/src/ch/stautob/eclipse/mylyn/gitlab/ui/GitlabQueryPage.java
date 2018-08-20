@@ -37,251 +37,250 @@ import org.gitlab.api.models.GitlabMilestone;
 import ch.stautob.eclipse.mylyn.gitlab.core.connection.ConnectionManager;
 import ch.stautob.eclipse.mylyn.gitlab.core.connection.GitlabConnection;
 
+
 public class GitlabQueryPage extends AbstractRepositoryQueryPage implements IWizardPage {
 
-	private Button openButton;
-	private Button closedButton;
-	private Text titleText;
-	private Text assigneeText;
-	private Text newLabel;
-	private Combo milestoneCombo;
-	private TableViewer labelsViewer;
+   private Button      openButton;
+   private Button      closedButton;
+   private Text        titleText;
+   private Text        assigneeText;
+   private Text        newLabel;
+   private Combo       milestoneCombo;
+   private TableViewer labelsViewer;
 
-	private SelectionListener completeListener = new SelectionAdapter() {
-		public void widgetSelected(SelectionEvent e) {
-			setPageComplete(isPageComplete());
-		}
-	};
+   private SelectionListener completeListener = new SelectionAdapter() {
 
-	/**
-	 * @param pageName
-	 * @param taskRepository
-	 * @param query
-	 */
-	public GitlabQueryPage(String pageName, TaskRepository taskRepository, IRepositoryQuery query) {
-		super(pageName, taskRepository, query);
-		setDescription("Specify your query");
-		setPageComplete(false);
-	}
+      public void widgetSelected(SelectionEvent e) {
+         setPageComplete(isPageComplete());
+      }
+   };
 
-	private void createLabelsArea(Composite parent) {
-		Group labelsArea = new Group(parent, SWT.NONE);
-		labelsArea.setText(Strings.QUERY_GROUP_LABELS);
-		GridDataFactory.fillDefaults().grab(true, true).applyTo(labelsArea);
-		GridLayoutFactory.swtDefaults().applyTo(labelsArea);
+   /**
+    * @param pageName
+    * @param taskRepository
+    * @param query
+    */
+   public GitlabQueryPage(String pageName, TaskRepository taskRepository, IRepositoryQuery query) {
+      super(pageName, taskRepository, query);
+      setDescription("Specify your query");
+      setPageComplete(false);
+   }
 
-		labelsViewer = new TableViewer(labelsArea, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL); 
+   private void createLabelsArea(Composite parent) {
+      Group labelsArea = new Group(parent, SWT.NONE);
+      labelsArea.setText(Strings.QUERY_GROUP_LABELS);
+      GridDataFactory.fillDefaults().grab(true, true).applyTo(labelsArea);
+      GridLayoutFactory.swtDefaults().applyTo(labelsArea);
 
-		GridDataFactory.fillDefaults().grab(true, true).hint(100, 80)
-				.applyTo(labelsViewer.getControl());
-		labelsViewer.setContentProvider(ArrayContentProvider.getInstance());
-		labelsViewer.setLabelProvider(new LabelProvider() {
-			public Image getImage(Object element) {
-				return GitlabImages.IMAGE_LABEL;
-			}
-		});
+      labelsViewer = new TableViewer(labelsArea, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL);
 
-		newLabel = new Text(labelsArea, SWT.BORDER);
-		GridDataFactory.fillDefaults().grab(true, false).applyTo(newLabel);
+      GridDataFactory.fillDefaults().grab(true, true).hint(100, 80).applyTo(labelsViewer.getControl());
+      labelsViewer.setContentProvider(ArrayContentProvider.getInstance());
+      labelsViewer.setLabelProvider(new LabelProvider() {
 
-		
-		Composite btnArea = new Composite(labelsArea, SWT.NONE);
-		GridDataFactory.fillDefaults().grab(true, true).applyTo(btnArea);
-		GridLayoutFactory.swtDefaults().numColumns(2).equalWidth(true).applyTo(btnArea);
-		
-		final Button btnAdd = new Button(btnArea, SWT.BORDER);
-		btnAdd.setText(Strings.QUERY_NEW_LABEL_REGEX);
-		GridDataFactory.fillDefaults().grab(true, false).applyTo(btnAdd);
-		
-		Button btnRemove = new Button(btnArea, SWT.BORDER);
-		btnRemove.setText(Strings.QUERY_REMOVE_LABEL_REGEX);
-		GridDataFactory.fillDefaults().grab(true, false).applyTo(btnRemove);
-		
-		btnAdd.addSelectionListener(new SelectionListener() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				String[] split = newLabel.getText().split(",");
-				for(String s : split) {
-					if(s.trim().length() > 0) {
-						labelsViewer.add(s.trim());
-					}
-				}
-				newLabel.setText("");
-			}
-			
-			@Override
-			public void widgetDefaultSelected(SelectionEvent e) {
-			}
-		});
-		
-		btnRemove.addSelectionListener(new SelectionListener() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				removeSelection();
-			}
-			
-			@Override
-			public void widgetDefaultSelected(SelectionEvent e) {
-			}
-		});
-		
-		newLabel.addFocusListener(new FocusListener() {
-			
-			@Override
-			public void focusLost(FocusEvent e) {
-				getShell().setDefaultButton(null);
-				setPageComplete(isPageComplete());
-			}
-			
-			@Override
-			public void focusGained(FocusEvent e) {
-				getShell().setDefaultButton(btnAdd);
-			}
-		});
-		
-		labelsViewer.getTable().addKeyListener(new KeyListener() {
-			
-			@Override
-			public void keyReleased(KeyEvent e) {
-				if(e.keyCode == SWT.DEL) {
-					removeSelection();
-				}
-			}
-			
-			@Override
-			public void keyPressed(KeyEvent e) {
-			}
-		});
-	}
-	
-	private void removeSelection() {
-		StructuredSelection selection = (StructuredSelection) labelsViewer.getSelection();
-		if(!selection.isEmpty()) {
-			labelsViewer.remove(selection.toArray());
-		}
-	}
+         public Image getImage(Object element) {
+            return GitlabImages.IMAGE_LABEL.createImage();
+         }
+      });
 
-	private void createOptionsArea(Composite parent) {
-		Composite optionsArea = new Composite(parent, SWT.NONE);
-		GridLayoutFactory.fillDefaults().numColumns(2).applyTo(optionsArea);
-		GridDataFactory.fillDefaults().grab(true, true).applyTo(optionsArea);
+      newLabel = new Text(labelsArea, SWT.BORDER);
+      GridDataFactory.fillDefaults().grab(true, false).applyTo(newLabel);
 
-		Composite statusArea = new Composite(optionsArea, SWT.NONE);
-		GridLayoutFactory.fillDefaults().numColumns(4).equalWidth(false).applyTo(statusArea);
-		GridDataFactory.fillDefaults().grab(true, false).span(2, 1).applyTo(statusArea);
+      Composite btnArea = new Composite(labelsArea, SWT.NONE);
+      GridDataFactory.fillDefaults().grab(true, true).applyTo(btnArea);
+      GridLayoutFactory.swtDefaults().numColumns(2).equalWidth(true).applyTo(btnArea);
 
-		new Label(statusArea, SWT.NONE).setText(Strings.QUERY_STATE);
+      final Button btnAdd = new Button(btnArea, SWT.BORDER);
+      btnAdd.setText(Strings.QUERY_NEW_LABEL_REGEX);
+      GridDataFactory.fillDefaults().grab(true, false).applyTo(btnAdd);
 
-		openButton = new Button(statusArea, SWT.CHECK);
-		openButton.setSelection(true);
-		openButton.setText(GitlabIssue.STATE_OPENED);
-		openButton.addSelectionListener(completeListener);
+      Button btnRemove = new Button(btnArea, SWT.BORDER);
+      btnRemove.setText(Strings.QUERY_REMOVE_LABEL_REGEX);
+      GridDataFactory.fillDefaults().grab(true, false).applyTo(btnRemove);
 
-		closedButton = new Button(statusArea, SWT.CHECK);
-		closedButton.setSelection(true);
-		closedButton.setText(GitlabIssue.STATE_CLOSED);
-		closedButton.addSelectionListener(completeListener);
+      btnAdd.addSelectionListener(new SelectionListener() {
 
-		Label milestonesLabel = new Label(optionsArea, SWT.NONE);
-		milestonesLabel.setText(Strings.QUERY_MILESTONE);
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            String[] split = newLabel.getText().split(",");
+            for (String s : split) {
+               if (s.trim().length() > 0) {
+                  labelsViewer.add(s.trim());
+               }
+            }
+            newLabel.setText("");
+         }
 
-		milestoneCombo = new Combo(optionsArea, SWT.DROP_DOWN | SWT.READ_ONLY);
-		GridDataFactory.fillDefaults().grab(true, false).applyTo(milestoneCombo);
-		GitlabConnection connection = ConnectionManager.getSafe(getTaskRepository());
-		if(connection != null) {
-			milestoneCombo.add("");
-			for(GitlabMilestone s : connection.getMilestones()) {
-				milestoneCombo.add(s.getTitle());
-			}
-		}
+         @Override
+         public void widgetDefaultSelected(SelectionEvent e) {}
+      });
 
-		Label assigneeLabel = new Label(optionsArea, SWT.NONE);
-		assigneeLabel.setText(Strings.QUERY_ASSIGNEE);
+      btnRemove.addSelectionListener(new SelectionListener() {
 
-		assigneeText = new Text(optionsArea, SWT.BORDER | SWT.SINGLE);
-		GridDataFactory.fillDefaults().grab(true, false).applyTo(assigneeText);
-	}
+         @Override
+         public void widgetSelected(SelectionEvent e) {
+            removeSelection();
+         }
 
-	public void createControl(Composite parent) {
-		Composite displayArea = new Composite(parent, SWT.NONE);
-		GridLayoutFactory.fillDefaults().numColumns(2).equalWidth(true).applyTo(displayArea);
-		GridDataFactory.fillDefaults().grab(true, true).applyTo(displayArea);
+         @Override
+         public void widgetDefaultSelected(SelectionEvent e) {}
+      });
 
-		if (!inSearchContainer()) {
-			Composite titleArea = new Composite(displayArea, SWT.NONE);
-			GridLayoutFactory.fillDefaults().numColumns(2).applyTo(titleArea);
-			GridDataFactory.fillDefaults().grab(true, false).span(2, 1).applyTo(titleArea);
+      newLabel.addFocusListener(new FocusListener() {
 
-			new Label(titleArea, SWT.NONE).setText(Strings.QUERY_TITLE);
-			titleText = new Text(titleArea, SWT.SINGLE | SWT.BORDER);
-			GridDataFactory.fillDefaults().grab(true, false).applyTo(titleText);
-			titleText.addModifyListener(new ModifyListener() {
-				public void modifyText(ModifyEvent e) {
-					setPageComplete(isPageComplete());
-				}
-			});
-		}
+         @Override
+         public void focusLost(FocusEvent e) {
+            getShell().setDefaultButton(null);
+            setPageComplete(isPageComplete());
+         }
 
-		createOptionsArea(displayArea);
+         @Override
+         public void focusGained(FocusEvent e) {
+            getShell().setDefaultButton(btnAdd);
+         }
+      });
 
-		createLabelsArea(displayArea);
+      labelsViewer.getTable().addKeyListener(new KeyListener() {
 
-		initialize();
-		setControl(displayArea);
-	}
+         @Override
+         public void keyReleased(KeyEvent e) {
+            if (e.keyCode == SWT.DEL) {
+               removeSelection();
+            }
+         }
 
-	private void initialize() {
-		IRepositoryQuery query = getQuery();
-		if (query == null) {
-			return;
-		}
-		
-		titleText.setText(query.getSummary());
-		assigneeText.setText(query.getAttribute("assignee"));
-		milestoneCombo.setText(query.getAttribute("milestone"));
-		
-		openButton.setSelection(Boolean.parseBoolean(query.getAttribute("opened")));
-		closedButton.setSelection(Boolean.parseBoolean(query.getAttribute("closed")));
-		
-		for(String label : query.getAttribute("labels").split(",")) {
-			if(label.trim().length() > 0) {
-				labelsViewer.add(label.trim());
-			}
-		}
-		
-	}
+         @Override
+         public void keyPressed(KeyEvent e) {}
+      });
+   }
 
-	public boolean isPageComplete() {
-		boolean complete = inSearchContainer() ? true : super.isPageComplete();
-		if (complete) {
-			String message = null;
-			if (!openButton.getSelection() && !closedButton.getSelection()) {
-				message = "Select either closed, opened or both issue states";
-			}
+   private void removeSelection() {
+      StructuredSelection selection = (StructuredSelection) labelsViewer.getSelection();
+      if (!selection.isEmpty()) {
+         labelsViewer.remove(selection.toArray());
+      }
+   }
 
-			setErrorMessage(message);
-			complete = message == null;
-		}
-		return complete;
-	}
+   private void createOptionsArea(Composite parent) {
+      Composite optionsArea = new Composite(parent, SWT.NONE);
+      GridLayoutFactory.fillDefaults().numColumns(2).applyTo(optionsArea);
+      GridDataFactory.fillDefaults().grab(true, true).applyTo(optionsArea);
 
-	public String getQueryTitle() {
-		return titleText != null ? titleText.getText() : null;
-	}
+      Composite statusArea = new Composite(optionsArea, SWT.NONE);
+      GridLayoutFactory.fillDefaults().numColumns(4).equalWidth(false).applyTo(statusArea);
+      GridDataFactory.fillDefaults().grab(true, false).span(2, 1).applyTo(statusArea);
 
-	public void applyTo(IRepositoryQuery query) {
-		query.setSummary(titleText.getText());
-		query.setAttribute("assignee", assigneeText.getText());
-		query.setAttribute("milestone", milestoneCombo.getText());
-		query.setAttribute("opened", "" + openButton.getSelection());
-		query.setAttribute("closed", "" + closedButton.getSelection());
-		
-		ArrayList<String> labels = new ArrayList<String>(); 
-		
-		for(TableItem i : labelsViewer.getTable().getItems()) {
-			labels.add(i.getText());
-		}
-		query.setAttribute("labels", StringUtils.join(labels, ","));
-	}
-	
+      new Label(statusArea, SWT.NONE).setText(Strings.QUERY_STATE);
+
+      openButton = new Button(statusArea, SWT.CHECK);
+      openButton.setSelection(true);
+      openButton.setText(GitlabIssue.STATE_OPENED);
+      openButton.addSelectionListener(completeListener);
+
+      closedButton = new Button(statusArea, SWT.CHECK);
+      closedButton.setSelection(true);
+      closedButton.setText(GitlabIssue.STATE_CLOSED);
+      closedButton.addSelectionListener(completeListener);
+
+      Label milestonesLabel = new Label(optionsArea, SWT.NONE);
+      milestonesLabel.setText(Strings.QUERY_MILESTONE);
+
+      milestoneCombo = new Combo(optionsArea, SWT.DROP_DOWN | SWT.READ_ONLY);
+      GridDataFactory.fillDefaults().grab(true, false).applyTo(milestoneCombo);
+      GitlabConnection connection = ConnectionManager.getSafe(getTaskRepository());
+      if (connection != null) {
+         milestoneCombo.add("");
+         for (GitlabMilestone s : connection.getMilestones()) {
+            milestoneCombo.add(s.getTitle());
+         }
+      }
+
+      Label assigneeLabel = new Label(optionsArea, SWT.NONE);
+      assigneeLabel.setText(Strings.QUERY_ASSIGNEE);
+
+      assigneeText = new Text(optionsArea, SWT.BORDER | SWT.SINGLE);
+      GridDataFactory.fillDefaults().grab(true, false).applyTo(assigneeText);
+   }
+
+   public void createControl(Composite parent) {
+      Composite displayArea = new Composite(parent, SWT.NONE);
+      GridLayoutFactory.fillDefaults().numColumns(2).equalWidth(true).applyTo(displayArea);
+      GridDataFactory.fillDefaults().grab(true, true).applyTo(displayArea);
+
+      if (!inSearchContainer()) {
+         Composite titleArea = new Composite(displayArea, SWT.NONE);
+         GridLayoutFactory.fillDefaults().numColumns(2).applyTo(titleArea);
+         GridDataFactory.fillDefaults().grab(true, false).span(2, 1).applyTo(titleArea);
+
+         new Label(titleArea, SWT.NONE).setText(Strings.QUERY_TITLE);
+         titleText = new Text(titleArea, SWT.SINGLE | SWT.BORDER);
+         GridDataFactory.fillDefaults().grab(true, false).applyTo(titleText);
+         titleText.addModifyListener(new ModifyListener() {
+
+            public void modifyText(ModifyEvent e) {
+               setPageComplete(isPageComplete());
+            }
+         });
+      }
+
+      createOptionsArea(displayArea);
+
+      createLabelsArea(displayArea);
+
+      initialize();
+      setControl(displayArea);
+   }
+
+   private void initialize() {
+      IRepositoryQuery query = getQuery();
+      if (query == null) { return; }
+
+      titleText.setText(query.getSummary());
+      assigneeText.setText(query.getAttribute("assignee"));
+      milestoneCombo.setText(query.getAttribute("milestone"));
+
+      openButton.setSelection(Boolean.parseBoolean(query.getAttribute("opened")));
+      closedButton.setSelection(Boolean.parseBoolean(query.getAttribute("closed")));
+
+      for (String label : query.getAttribute("labels").split(",")) {
+         if (label.trim().length() > 0) {
+            labelsViewer.add(label.trim());
+         }
+      }
+
+   }
+
+   public boolean isPageComplete() {
+      boolean complete = inSearchContainer() ? true : super.isPageComplete();
+      if (complete) {
+         String message = null;
+         if (!openButton.getSelection() && !closedButton.getSelection()) {
+            message = "Select either closed, opened or both issue states";
+         }
+
+         setErrorMessage(message);
+         complete = message == null;
+      }
+      return complete;
+   }
+
+   public String getQueryTitle() {
+      return titleText != null ? titleText.getText() : null;
+   }
+
+   public void applyTo(IRepositoryQuery query) {
+      query.setSummary(titleText.getText());
+      query.setAttribute("assignee", assigneeText.getText());
+      query.setAttribute("milestone", milestoneCombo.getText());
+      query.setAttribute("opened", "" + openButton.getSelection());
+      query.setAttribute("closed", "" + closedButton.getSelection());
+
+      ArrayList<String> labels = new ArrayList<String>();
+
+      for (TableItem i : labelsViewer.getTable().getItems()) {
+         labels.add(i.getText());
+      }
+      query.setAttribute("labels", StringUtils.join(labels, ","));
+   }
+
 }
