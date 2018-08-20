@@ -16,70 +16,64 @@ import org.gitlab.api.models.GitlabProjectMember;
 import ch.stautob.eclipse.mylyn.gitlab.core.connection.ConnectionManager;
 import ch.stautob.eclipse.mylyn.gitlab.core.connection.GitlabConnection;
 
+
 public class GitlabAttributeMapper extends TaskAttributeMapper {
-	
-	public GitlabAttributeMapper(TaskRepository taskRepository) throws CoreException, IOException {
-		super(taskRepository);
-	}
-	
-	@Override
-	public Map<String, String> getOptions(TaskAttribute attribute) {
-		if(attribute.getId().equals(GitlabAttribute.MILESTONE.getTaskKey())) {
-			return getAsMap(getMilestones());
-		} else {
-			return super.getOptions(attribute);
-		}
-	}
-	
-	private GitlabConnection getConnection() throws CoreException {
-		return ConnectionManager.get(getTaskRepository());
-	}
-	
-	public GitlabProjectMember findProjectMemberByName(String name) {
-		try {
-			List<GitlabProjectMember> members = getConnection().getProjectMembers();
-			for(GitlabProjectMember member : members) {
-				if(member.getName().equals(name) || member.getUsername().equals(name)) {
-					return member;
-				}
-			}
-		} catch (CoreException e) {
-		}		
-		return null;
-	}
-	
-	public GitlabMilestone findMilestoneByName(String name) {
-		try {
-			List<GitlabMilestone> milestones = getConnection().getMilestones();
-			for(GitlabMilestone m : milestones) {
-				if(m.getTitle().equals(name)) {
-					return m;
-				}
-			}
-		} catch (CoreException e) {
-		}
-		return null;
-	}
-	
-	private List<String> getMilestones() {
-		List<String> target = new ArrayList<String>();
-		try {			
-			List<GitlabMilestone> milestones = getConnection().getMilestones();
-			for(GitlabMilestone m : milestones) {
-				target.add(m.getTitle());
-			}
-		} catch (CoreException e) {
-		}
-		return target;
-	}
-	
-	private HashMap<String, String> getAsMap(List<String> list) {
-		HashMap<String, String> map = new HashMap<String, String>();
-		map.put("", "");
-		for(String s : list) {
-			map.put(s, s);
-		}
-		return map;
-	}
+
+   public GitlabAttributeMapper(TaskRepository taskRepository) throws CoreException, IOException {
+      super(taskRepository);
+   }
+
+   @Override
+   public Map<String, String> getOptions(TaskAttribute attribute) {
+      if (attribute.getId().equals(GitlabAttribute.MILESTONE.getTaskKey())) {
+         return getAsMap(getMilestones());
+      } else {
+         return super.getOptions(attribute);
+      }
+   }
+
+   private GitlabConnection getConnection() throws CoreException {
+      return ConnectionManager.get(getTaskRepository());
+   }
+
+   public GitlabProjectMember findProjectMemberByName(String name) {
+      try {
+         List<GitlabProjectMember> members = getConnection().getProjectMembers();
+         for (GitlabProjectMember member : members) {
+            if (member.getName().equals(name) || member.getUsername().equals(name)) { return member; }
+         }
+      } catch (CoreException e) {}
+      return null;
+   }
+
+   public GitlabMilestone findMilestoneByName(String name) {
+      try {
+         List<GitlabMilestone> milestones = getConnection().getMilestones();
+         for (GitlabMilestone m : milestones) {
+            if (m.getTitle().equals(name)) { return m; }
+         }
+      } catch (CoreException e) {}
+      return null;
+   }
+
+   private List<String> getMilestones() {
+      List<String> target = new ArrayList<>();
+      try {
+         List<GitlabMilestone> milestones = getConnection().getMilestones();
+         for (GitlabMilestone m : milestones) {
+            target.add(m.getTitle());
+         }
+      } catch (CoreException e) {}
+      return target;
+   }
+
+   private HashMap<String, String> getAsMap(List<String> list) {
+      HashMap<String, String> map = new HashMap<>();
+      map.put("", "");
+      for (String s : list) {
+         map.put(s, s);
+      }
+      return map;
+   }
 
 }

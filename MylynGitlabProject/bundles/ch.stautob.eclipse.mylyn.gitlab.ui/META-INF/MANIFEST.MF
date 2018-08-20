@@ -2,20 +2,23 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Mylyn Gitlab Connector UI
 Bundle-SymbolicName: ch.stautob.eclipse.mylyn.gitlab.ui;singleton:=true
-Bundle-Version: 1.0.0
+Bundle-Version: 1.0.0.qualifier
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui,
  org.eclipse.ui.forms,
- org.eclipse.mylyn.commons.net;bundle-version="[3.8.0,4.0.0)",
- org.eclipse.mylyn.commons.core;bundle-version="[3.8.0,4.0.0)",
- org.eclipse.mylyn.tasks.ui;bundle-version="[3.8.0,4.0.0)",
- org.eclipse.mylyn.tasks.core;bundle-version="[3.8.0,4.0.0)",
- org.eclipse.mylyn.commons.workbench;bundle-version="[3.8.0,4.0.0)",
- org.eclipse.mylyn.commons.ui;bundle-version="[3.8.0,4.0.0)",
+ org.eclipse.mylyn.commons.net,
+ org.eclipse.mylyn.tasks.ui,
+ org.eclipse.mylyn.tasks.core,
+ org.eclipse.mylyn.commons.ui,
  ch.stautob.eclipse.mylyn.gitlab.core,
- org.eclipse.collections
+ org.eclipse.collections,
+ com.fasterxml.jackson.core.jackson-databind;bundle-version="2.9.2",
+ com.fasterxml.jackson.core.jackson-core;bundle-version="2.9.2",
+ org.slf4j.api;bundle-version="1.7.2",
+ org.slf4j.log4j;bundle-version="1.7.2",
+ org.gitlab.api
 Bundle-Vendor: Stautob
 Bundle-ActivationPolicy: lazy
-Bundle-Activator: ch.stautob.eclipse.mylyn.gitlab.ui.GitlabUIPlugin
+Bundle-Activator: ch.stautob.eclipse.mylyn.gitlab.ui.Activator
 Automatic-Module-Name: ch.stautob.eclipse.mylyn.gitlab.ui

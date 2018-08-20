@@ -1,14 +1,23 @@
 target "Gitlab Mylyn Develop" with source requirements
 
 location "http://download.eclipse.org/releases/photon" {
-	org.eclipse.emf.sdk.feature.group lazy
 	org.eclipse.equinox.common lazy
-	org.eclipse.platform.sdk [4.8.0,5.0.0)
-	org.eclipse.sdk.ide [4.8.0,5.0.0)
+	org.eclipse.platform.sdk lazy
+	org.eclipse.sdk.ide lazy
 	org.eclipse.mylyn_feature.feature.group lazy
-	org.eclipse.egit.feature.group lazy
 }
 
 location "http://download.eclipse.org/collections/9.2.0/repository/" {
 	org.eclipse.collections.feature.feature.group
+}
+
+location "http://download.eclipse.org/tools/orbit/downloads/drops/R20180606145124/repository" {
+	com.fasterxml.jackson.core.jackson-databind lazy
+	com.fasterxml.jackson.core.jackson-core lazy
+	org.apache.commons.io lazy
+	org.slf4j.log4j [1.7.2,2.0.0)
+	org.slf4j.log4j.source lazy
+	org.slf4j.apis.log4j lazy
+	org.slf4j.apis.log4j.source lazy
+	org.slf4j.api lazy
 }

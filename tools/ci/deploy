@@ -1,0 +1,103 @@
+#!/bin/sh
+
+# ============================================================================
+#                         Plug-in deployment helper
+# ============================================================================
+#
+# Required Environment Variables
+# ------------------------------
+#
+# - P2_HOST
+#   The target deployment server
+#
+# - P2_HOST_KEY
+#   The public key of the target deployment server
+#
+# - P2_PRIVATE_KEY
+#   The private key to access the target deployment server
+#
+# - P2_ROOT
+#   The root path of the update sites
+#
+# - P2_DESTINATION
+#   The destination folder of the update site in the P2_ROOT. The special
+#   value "P2_USE_REL_TAG" can be used to specify deployment via release tag
+#   identifiers (see REL_TAG_PATTERN below).
+#
+# - P2_SOURCE
+#   The directory containing the update site files
+#
+# - P2_USER
+#   The user to log in as on the target deployment server
+#
+# Optional Environment Variables
+# ------------------------------
+#
+# - REL_TAG_PATTERN
+#   A pattern to describe release tags. This variable is only used if release
+#   tag deployment identifiers are activated (see P2_DESTINATION above). If
+#   release tag deployment identifiers are activated but no pattern is
+#   provided, this variable defaults to "v[0-9]*.[0-9]*.0".
+#
+# - P2_ENABLE_COMPOSITE, P2_COMPOSITE_NAME, P2_COMPOSITE_VERSION
+#   P2_ENABLE_COMPOSITE is used to enable compilation of a composite update
+#   site on the remote host. If enabled (e.g. set to 1), P2_COMPOSITE_NAME and
+#   P2_COMPOSITE_VERSION have to be set accordingly.
+#
+# ============================================================================
+
+
+# Yes, we forcefully disable tracing
+set +x
+
+if [[ -z "$P2_DESTINATION" ]]; then echo "Missing P2_DESTINATION!"; exit 1; fi
+if [[ -z "$P2_HOST" ]]; then echo "Missing P2_HOST!"; exit 1; fi
+if [[ -z "$P2_HOST_KEY" ]]; then echo "Missing P2_HOST_KEY!"; exit 1; fi
+if [[ -z "$P2_PRIVATE_KEY" ]]; then echo "Missing P2_PRIVATE_KEY!"; exit 1; fi
+if [[ -z "$P2_ROOT" ]]; then echo "Missing P2_ROOT!"; exit 1; fi
+if [[ -z "$P2_SOURCE" ]]; then echo "Missing P2_SOURCE!"; exit 1; fi
+if [[ -z "$P2_USER" ]]; then echo "Missing P2_USER!"; exit 1; fi
+
+if [[ "$P2_ENABLE_COMPOSITE" == "1" ]]; then
+  if [[ -z "$P2_COMPOSITE_NAME" ]]; then echo "Missing P2_COMPOSITE_NAME!"; exit 1; fi
+  if [[ -z "$P2_COMPOSITE_VERSION" ]]; then echo "Missing P2_COMPOSITE_VERSION!"; exit 1; fi
+fi
+
+if [[ -f /.dockerenv ]]; then
+  echo "Detected Docker environment"
+  echo "Registering remote host key for '${P2_HOST}' ..."
+  mkdir -p ~/.ssh
+  echo "${P2_HOST_KEY}" > ~/.ssh/known_hosts
+else
+  echo "No Docker environment detected."
+  exit 1
+fi
+
+echo "Starting ssh agent ..."
+eval $(ssh-agent -s)
+
+echo "Loading deployment key ..."
+echo "${P2_PRIVATE_KEY}" | ssh-add -
+
+if [[ "${P2_DESTINATION}" == "P2_USE_REL_TAG" ]]; then
+  if [[ -z "${REL_TAG_PATTERN}" ]]; then
+    REL_TAG_PATTERN='v[0-9]*.[0-9]*.0'
+  fi
+
+  P2_DESTINATION=$(git describe --abbrev=0 --match="${REL_TAG_PATTERN}" | sed "s/^v//")
+  echo "Detected '${P2_DESTINATION}' as the current release version"
+fi
+
+echo "Creating destination directory on '${P2_HOST}'..."
+ssh ${P2_USER}@${P2_HOST} "cd ${P2_ROOT} && mkdir -p ${P2_DESTINATION}"
+
+echo "Deploying updatesite to '${P2_HOST}'..."
+scp -r ${P2_SOURCE}/* ${P2_USER}@${P2_HOST}:${P2_ROOT}/${P2_DESTINATION}
+
+if [[ "$P2_ENABLE_COMPOSITE" == "1" ]]; then
+  echo "Compiling composite updatesite '${P2_COMPOSITE_NAME}:${P2_COMPOSITE_VERSION}'..."
+  ssh ${P2_USER}@${P2_HOST} "cd ${P2_ROOT} && compile-composite-updatesite '${P2_COMPOSITE_NAME}' '${P2_COMPOSITE_VERSION}'"
+else
+  echo "Creating 'latest' symlink"
+  ssh ${P2_USER}@${P2_HOST} "cd ${P2_ROOT} && ln -sfTv ${P2_DESTINATION} latest"
+fi

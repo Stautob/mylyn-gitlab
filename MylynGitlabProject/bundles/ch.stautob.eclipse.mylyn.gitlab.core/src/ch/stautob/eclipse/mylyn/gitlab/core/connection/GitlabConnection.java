@@ -35,7 +35,7 @@ public class GitlabConnection {
    }
 
    public void update() throws IOException {
-      ArrayList<GitlabProjectMember> memberList = new ArrayList<GitlabProjectMember>();
+      ArrayList<GitlabProjectMember> memberList = new ArrayList<>();
 
       milestones = api().getMilestones(project);
       memberList.addAll(api().getProjectMembers(project));

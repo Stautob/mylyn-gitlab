@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="ch.stautob.eclipse.mylyn.gitlab.feature"
-      label="Examplator Plug-ins"
-      version="1.0.0.qualifier">
+      label="Mylyn Gitlab Connector"
+      version="1.0.0.qualifier"
+      provider-name="Stautob">
 
-   <description url="http://www.example.com/description">
-      [Enter Feature Description here.]
+   <description url="https://github.com/Stautob/mylyn-gitlab">
+      Adds a Mylyn connector for Gitlab.
    </description>
 
    <copyright url="http://www.example.com/copyright">
@@ -16,8 +17,46 @@
       [Enter License Description here.]
    </license>
 
+   <url>
+      <discovery label="Eclipse Collections" url="http://download.eclipse.org/collections/9.2.0/repository/"/>
+      <discovery label="Eclipse Photon" url="http://download.eclipse.org/releases/photon"/>
+      <discovery label="Eclipse Orbit" url="http://download.eclipse.org/tools/orbit/downloads/drops/R20180606145124/repository"/>
+   </url>
+
+   <requires>
+      <import plugin="org.eclipse.core.runtime"/>
+      <import plugin="org.eclipse.mylyn.commons.net"/>
+      <import plugin="org.eclipse.mylyn.tasks.core"/>
+      <import plugin="org.eclipse.collections"/>
+      <import plugin="com.fasterxml.jackson.core.jackson-core" version="2.9.2" match="greaterOrEqual"/>
+      <import plugin="com.fasterxml.jackson.core.jackson-databind" version="2.9.2" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.ui"/>
+      <import plugin="org.eclipse.ui.forms"/>
+      <import plugin="org.eclipse.mylyn.tasks.ui"/>
+      <import plugin="org.eclipse.mylyn.commons.ui"/>
+      <import plugin="org.slf4j.api" version="1.7.2" match="greaterOrEqual"/>
+      <import plugin="org.slf4j.log4j" version="1.7.2" match="greaterOrEqual"/>
+      <import plugin="org.apache.commons.io"/>
+      <import plugin="org.eclipse.osgi"/>
+      <import plugin="com.fasterxml.jackson.core.jackson-annotations"/>
+   </requires>
+
    <plugin
          id="ch.stautob.eclipse.mylyn.gitlab.core"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="ch.stautob.eclipse.mylyn.gitlab.ui"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.gitlab.api"
          download-size="0"
          install-size="0"
          version="0.0.0"

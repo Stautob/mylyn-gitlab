@@ -2,7 +2,6 @@ package ch.stautob.eclipse.mylyn.gitlab.core.tasks;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -38,6 +37,7 @@ import ch.stautob.eclipse.mylyn.gitlab.core.connection.ConnectionManager;
 import ch.stautob.eclipse.mylyn.gitlab.core.connection.GitlabConnection;
 import ch.stautob.eclipse.mylyn.gitlab.core.connection.GitlabConnector;
 import ch.stautob.eclipse.mylyn.gitlab.core.exceptions.GitlabException;
+
 
 public class GitlabTaskDataHandler extends AbstractTaskDataHandler {
 
@@ -120,7 +120,7 @@ public class GitlabTaskDataHandler extends AbstractTaskDataHandler {
 
             issue = api.editIssue(connection.project.getId(), GitlabConnector.getTicketId(data.getTaskId()), assigneeId, milestoneId, labels, body,
                   title, GitlabAction.find(action).getGitlabIssueAction());
-            return new RepositoryResponse(ResponseKind.TASK_UPDATED, "" + issue.getId());
+            return new RepositoryResponse(ResponseKind.TASK_UPDATED, "" + issue.getIid());
          }
       } catch (IOException e) {
          throw new GitlabException("Unknown connection error!");
@@ -144,7 +144,8 @@ public class GitlabTaskDataHandler extends AbstractTaskDataHandler {
 
    public TaskData createTaskDataFromGitlabIssue(GitlabIssue issue, TaskRepository repository, List<GitlabNote> notes) throws CoreException {
       GitlabConnection connection = ConnectionManager.get(repository);
-      TaskData data = new TaskData(connection.mapper, Activator.CONNECTOR_KIND, repository.getUrl(), "" + issue.getId());
+
+      TaskData data = new TaskData(connection.mapper, Activator.CONNECTOR_KIND, repository.getUrl(), String.valueOf(issue.getIid()));
 
       String labels = StringUtils.join(issue.getLabels(), ", ");
 
@@ -179,13 +180,7 @@ public class GitlabTaskDataHandler extends AbstractTaskDataHandler {
          root.getAttribute(GitlabAttribute.ASSIGNEE.getTaskKey()).setValue(issue.getAssignee().getName());
       }
 
-      Collections.sort(notes, new Comparator<GitlabNote>() {
-
-         @Override
-         public int compare(GitlabNote o1, GitlabNote o2) {
-            return o1.getCreatedAt().compareTo(o2.getCreatedAt());
-         }
-      });
+      Collections.sort(notes, (o1, o2) -> o1.getCreatedAt().compareTo(o2.getCreatedAt()));
 
       for (int i = 0; i < notes.size(); i++) {
          TaskCommentMapper cmapper = new TaskCommentMapper();
@@ -198,8 +193,7 @@ public class GitlabTaskDataHandler extends AbstractTaskDataHandler {
       }
 
       GitlabAction[] actions = GitlabAction.getActions(issue);
-      for (int i = 0; i < actions.length; ++i) {
-         GitlabAction action = actions[i];
+      for (GitlabAction action : actions) {
          TaskAttribute attribute = data.getRoot().createAttribute(TaskAttribute.PREFIX_OPERATION + action.label);
          TaskOperation.applyTo(attribute, action.label, action.label);
       }
@@ -248,7 +242,7 @@ public class GitlabTaskDataHandler extends AbstractTaskDataHandler {
    /**
     * Returns the Priority String for Mylyn. Uses a regular expression to check
     * for priorities in the given label.
-    * 
+    *
     * @param labels
     * @return
     */
@@ -267,7 +261,7 @@ public class GitlabTaskDataHandler extends AbstractTaskDataHandler {
    /**
     * Returns the type string for Mylyn. Uses a regular expression to check
     * for types in the given label.
-    * 
+    *
     * @param labels
     * @return
     */

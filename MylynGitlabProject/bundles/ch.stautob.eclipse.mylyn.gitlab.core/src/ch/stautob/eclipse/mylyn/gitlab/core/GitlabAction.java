@@ -2,6 +2,7 @@ package ch.stautob.eclipse.mylyn.gitlab.core;
 
 import org.gitlab.api.models.GitlabIssue;
 
+
 public enum GitlabAction {
 
    LEAVE("leave"), CLOSE("close"), REOPEN("reopen");
@@ -24,7 +25,7 @@ public enum GitlabAction {
 
    /**
     * Returns all valid actions for the given issue.
-    * 
+    *
     * @param issue
     * @return
     */
@@ -38,7 +39,7 @@ public enum GitlabAction {
 
    /**
     * Returns the GitlabAction enum for the given action string.
-    * 
+    *
     * @param action
     * @return
     */
@@ -51,7 +52,7 @@ public enum GitlabAction {
 
    /**
     * Wrapper for the GitlabAPI Issue Action enum.
-    * 
+    *
     * @return
     */
    public GitlabIssue.Action getGitlabIssueAction() {

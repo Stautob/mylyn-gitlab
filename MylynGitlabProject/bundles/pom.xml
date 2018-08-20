@@ -11,5 +11,6 @@
     <modules>
         <module>ch.stautob.eclipse.mylyn.gitlab.core</module>
         <module>ch.stautob.eclipse.mylyn.gitlab.ui</module>
+        <module>org.gitlab.api</module>
     </modules>
 </project>

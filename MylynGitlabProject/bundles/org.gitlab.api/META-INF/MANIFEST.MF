@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Gitlab API 4.0.1
+Bundle-SymbolicName: org.gitlab.api
+Bundle-Version: 1.0.0.qualifier
+Automatic-Module-Name: org.gitlab.api
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Require-Bundle: com.fasterxml.jackson.core.jackson-databind,
+ org.apache.commons.io,
+ org.slf4j.log4j,
+ org.slf4j.api,
+ org.eclipse.osgi,
+ com.fasterxml.jackson.core.jackson-core,
+ com.fasterxml.jackson.core.jackson-annotations
+Export-Package: org.gitlab.api,
+ org.gitlab.api.models

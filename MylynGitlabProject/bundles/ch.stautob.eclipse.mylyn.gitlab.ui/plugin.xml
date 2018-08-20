@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?eclipse version="3.4"?>
+<?eclipse version="3.8"?>
 <plugin>
    <extension
          id="ch.stautob.eclipse.mylyn.gitlab.ui"
          name="%repository.name"
          point="org.eclipse.mylyn.tasks.ui.repositories">
       <connectorUi
-      		brandingIcon="icons/gitlab-icon.gif"
-            class="ch.stautob.eclipse.mylyn.gitlab.ui.GitlabConnectorUI"
+      		brandingIcon="icons/gitlab-icon.png"
+            class="ch.stautob.eclipse.mylyn.gitlab.ui.pages.GitlabConnectorUI"
             id="ch.stautob.eclipse.mylyn.gitlab.ui"
             name="Gitlab Connector Ui"
-            overlayIcon="icons/gitlab-overlay.gif"/>
+            overlayIcon="icons/gitlab-overlay.png"/>
    </extension>
    <extension point="org.eclipse.mylyn.tasks.ui.editors">
          <pageFactory
-            class="ch.stautob.eclipse.mylyn.gitlab.ui.GitlabEditorPageFactory"
+            class="ch.stautob.eclipse.mylyn.gitlab.ui.editor.GitlabEditorPageFactory"
             id="ch.stautob.eclipse.mylyn.gitlab.ui.pageFactory">
       </pageFactory>
    </extension>

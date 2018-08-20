@@ -26,137 +26,135 @@ import ch.stautob.eclipse.mylyn.gitlab.core.issues.GitlabIssueSearch;
 import ch.stautob.eclipse.mylyn.gitlab.core.tasks.GitlabTaskDataHandler;
 import ch.stautob.eclipse.mylyn.gitlab.core.tasks.GitlabTaskMapper;
 
+
 public class GitlabConnector extends AbstractRepositoryConnector {
 
-	private GitlabTaskDataHandler handler = new GitlabTaskDataHandler();
+   private GitlabTaskDataHandler handler = new GitlabTaskDataHandler();
 
-	@Override
-	public boolean canCreateNewTask(TaskRepository repository) {
-		return true;
-	}
+   @Override
+   public boolean canCreateNewTask(TaskRepository repository) {
+      return true;
+   }
 
-	@Override
-	public boolean canCreateTaskFromKey(TaskRepository repository) {
-		return false;
-	}
+   @Override
+   public boolean canCreateTaskFromKey(TaskRepository repository) {
+      return false;
+   }
 
-	@Override
-	public String getConnectorKind() {
-		return Activator.CONNECTOR_KIND;
-	}
+   @Override
+   public String getConnectorKind() {
+      return Activator.CONNECTOR_KIND;
+   }
 
-	@Override
-	public String getLabel() {
-		return "Gitlab issues";
-	}
+   @Override
+   public String getLabel() {
+      return "Gitlab issues";
+   }
 
-	@Override
-	public String getRepositoryUrlFromTaskUrl(String arg0) {
-		return null;
-	}
+   @Override
+   public String getRepositoryUrlFromTaskUrl(String arg0) {
+      return null;
+   }
 
-	@Override
-	public TaskData getTaskData(TaskRepository repository, String id,
-			IProgressMonitor monitor) throws CoreException {
+   @Override
+   public TaskData getTaskData(TaskRepository repository, String id, IProgressMonitor monitor) throws CoreException {
 
-		try {
-			monitor.beginTask("Task Download", IProgressMonitor.UNKNOWN);
-			return handler.downloadTaskData(repository, GitlabConnector.getTicketId(id));
-		} finally {
-			monitor.done();
-		}
-	}
+      try {
+         monitor.beginTask("Task Download", IProgressMonitor.UNKNOWN);
+         return handler.downloadTaskData(repository, GitlabConnector.getTicketId(id));
+      } finally {
+         monitor.done();
+      }
+   }
 
-	@Override
-	public String getTaskIdFromTaskUrl(String url) {
-		return null;
-	}
+   @Override
+   public String getTaskIdFromTaskUrl(String url) {
+      return null;
+   }
 
-	@Override
-	public String getTaskUrl(String arg0, String arg1) {
-		return null;
-	}
+   @Override
+   public String getTaskUrl(String arg0, String arg1) {
+      return null;
+   }
 
-	@Override
-	public boolean hasTaskChanged(TaskRepository repository, ITask task, TaskData data) {
-		TaskMapper mapper = new GitlabTaskMapper(data);
-		if (data.isPartial()) {
-			return mapper.hasChanges(task);
-		} else {
-			Date repositoryDate = mapper.getModificationDate();
-			Date localDate = task.getModificationDate();
-			if (repositoryDate != null && repositoryDate.equals(localDate)) {
-				return false;
-			}
-			return true;
-		}
-	}
+   @Override
+   public boolean hasTaskChanged(TaskRepository repository, ITask task, TaskData data) {
+      TaskMapper mapper = new GitlabTaskMapper(data);
+      if (data.isPartial()) {
+         return mapper.hasChanges(task);
+      } else {
+         Date repositoryDate = mapper.getModificationDate();
+         Date localDate = task.getModificationDate();
+         if (repositoryDate != null && repositoryDate.equals(localDate)) { return false; }
+         return true;
+      }
+   }
 
-	@Override
-	public IStatus performQuery(TaskRepository repository, IRepositoryQuery query,
-			TaskDataCollector collector, ISynchronizationSession session,
-			IProgressMonitor monitor) {
+   @Override
+   public IStatus performQuery(TaskRepository repository, IRepositoryQuery query, TaskDataCollector collector, ISynchronizationSession session,
+         IProgressMonitor monitor) {
 
-		try {
-			monitor.beginTask("Tasks querying", IProgressMonitor.UNKNOWN);
-			GitlabConnection connection = ConnectionManager.get(repository);
-			GitlabAPI api = connection.api();
+      try {
+         monitor.beginTask("Tasks querying", IProgressMonitor.UNKNOWN);
+         GitlabConnection connection = ConnectionManager.get(repository);
+         GitlabAPI api = connection.api();
 
-			GitlabIssueSearch search = new GitlabIssueSearch(query);
-			List<GitlabIssue> issues = api.getIssues(connection.project);
+         GitlabIssueSearch search = new GitlabIssueSearch(query);
+         List<GitlabIssue> issues = api.getIssues(connection.project);
 
-			for(GitlabIssue i : issues) {
-				if(search.doesMatch(i)) {
-					collector.accept(handler.createTaskDataFromGitlabIssue(i, repository, api.getNotes(i)));
-				}
-			}
+         for (GitlabIssue i : issues) {
+            if (search.doesMatch(i)) collector.accept(handler.createTaskDataFromGitlabIssue(i, repository, api.getNotes(i)));
+         }
 
-			return Status.OK_STATUS;
-		} catch (CoreException e) {
-			return new Status(Status.ERROR, Activator.ID_PLUGIN, "Unable to execute Query: " + e.getMessage());
-		} catch(IOException e) {
-			return new Status(Status.ERROR, Activator.ID_PLUGIN, "Unable to execute Query: " + e.getMessage());
-		} finally {
-			monitor.done();
-		}
-	}
+         return Status.OK_STATUS;
+      } catch (CoreException e) {
+         return new Status(IStatus.ERROR, Activator.ID_PLUGIN, "Unable to execute Query: " + e.getMessage());
+      } catch (IOException e) {
+         return new Status(IStatus.ERROR, Activator.ID_PLUGIN, "Unable to execute Query: " + e.getMessage());
+      } finally {
+         monitor.done();
+      }
+   }
 
-	@Override
-	public void updateRepositoryConfiguration(TaskRepository repository,
-			IProgressMonitor monitor) throws CoreException {
-		try {
-			monitor.beginTask("Updating repository configuration", IProgressMonitor.UNKNOWN);
-			ConnectionManager.get(repository, true);
-		} finally {
-			monitor.done();
-		}
-	}
+   @Override
+   public void updateRepositoryConfiguration(TaskRepository repository, IProgressMonitor monitor) throws CoreException {
+      try {
+         monitor.beginTask("Updating repository configuration", IProgressMonitor.UNKNOWN);
+         ConnectionManager.get(repository, true);
+      } finally {
+         monitor.done();
+      }
+   }
 
-	@Override
-	public void updateTaskFromTaskData(TaskRepository repository, ITask task, TaskData data) {
-		GitlabTaskMapper mapper = new GitlabTaskMapper(data);
-		mapper.applyTo(task);
-	}
+   @Override
+   public void updateTaskFromTaskData(TaskRepository repository, ITask task, TaskData data) {
+      getTaskMapping(data).applyTo(task);
+   }
 
-	public static void validate(TaskRepository taskRepo) throws CoreException {
-		try {
-			ConnectionManager.validate(taskRepo);
-		} catch(GitlabException e) {
-			throw e;
-		} catch (Exception e) {
-			throw new GitlabException("Connection not successful or repository not found: " + e.getMessage());
-		} catch (Error e) {
-			throw new GitlabException("Connection not successful or repository not found: " + e.getMessage() );
-		}
-	}
+   @Override
+   public GitlabTaskMapper getTaskMapping(TaskData taskData) {
+      return new GitlabTaskMapper(taskData);
+   }
 
-	@Override
-	public AbstractTaskDataHandler getTaskDataHandler() {
-		return handler;
-	}
+   public static void validate(TaskRepository taskRepo) throws CoreException {
+      try {
+         ConnectionManager.validate(taskRepo);
+      } catch (GitlabException e) {
+         throw e;
+      } catch (Exception e) {
+         throw new GitlabException("Connection not successful or repository not found: " + e.getMessage());
+      } catch (Error e) {
+         throw new GitlabException("Connection not successful or repository not found: " + e.getMessage());
+      }
+   }
 
-	public static Integer getTicketId(String id) {
-		return Integer.parseInt(id);
-	}
+   @Override
+   public AbstractTaskDataHandler getTaskDataHandler() {
+      return handler;
+   }
+
+   public static Integer getTicketId(String id) {
+      return Integer.parseInt(id);
+   }
 
 }
