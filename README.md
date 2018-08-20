@@ -1,5 +1,8 @@
 # Mylyn Gitlab Connector                                                                                            
-This connector was created after the connector in the Eclipse-Marketplace stopped working (Gitlab removed support for API level bellow v5.                                                                                              
+This connector was created after the connector in the Eclipse-Marketplace stopped working (Gitlab removed support for API level bellow v5.                   
+
+### Update-Site
+The update-site for the current release can be found here: https://stautob.github.io/mylyn-gitlab/1.0/
 
 ### Creating a connector
 ![CreateConnector](/images/SelectConnector.png)
