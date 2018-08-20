@@ -96,7 +96,7 @@ public class GitlabRepositorySettingsPage extends AbstractRepositorySettingsPage
       if (getRepository() != null) {
          if (TaskRepositoryUtil.getUsesPrivateToken(getRepository())) {
             useToken.setSelection(true);
-            setTokenLoginEnabled(false);
+            setTokenLoginEnabled(true);
          }
 
          if (TaskRepositoryUtil.getGitlabBaseUrl(getRepository()) != null) {
@@ -106,7 +106,7 @@ public class GitlabRepositorySettingsPage extends AbstractRepositorySettingsPage
    }
 
    private void setTokenLoginEnabled(boolean enabled) {
-      repositoryUserNameEditor.getTextControl(compositeContainer).setEnabled(enabled);
+      repositoryUserNameEditor.getTextControl(compositeContainer).setEnabled(!enabled);
       if (!enabled) {
          repositoryUserNameEditor.setStringValue(usernameBackup);
          repositoryPasswordEditor.setLabelText(LABEL_PASSWORD);
@@ -115,7 +115,7 @@ public class GitlabRepositorySettingsPage extends AbstractRepositorySettingsPage
          repositoryUserNameEditor.setStringValue(null);
          repositoryPasswordEditor.setLabelText(Messages.GitlabRepositorySettingsPage_AccessTokenRequest);
       }
-      repositoryUserNameEditor.setEmptyStringAllowed(!enabled);
+      repositoryUserNameEditor.setEmptyStringAllowed(enabled);
       compositeContainer.layout();
    }
 
