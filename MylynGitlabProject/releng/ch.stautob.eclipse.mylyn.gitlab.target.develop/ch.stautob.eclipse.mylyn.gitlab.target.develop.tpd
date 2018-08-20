@@ -21,9 +21,3 @@ location "http://download.eclipse.org/tools/orbit/downloads/drops/R2018060614512
 	org.slf4j.apis.log4j.source lazy
 	org.slf4j.api lazy
 }
-//
-//location "http://www.genuitec.com/updates/webclipse/ci/" {
-//	com.genuitec.eclipse.theming.icon.designer lazy
-//	com.genuitec.eclipse.theming.feature.feature.group lazy
-//	com.genuitec.eclipse.common.core.base.feature.feature.group lazy
-//}
